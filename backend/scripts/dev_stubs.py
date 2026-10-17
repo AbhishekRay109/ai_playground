@@ -34,14 +34,27 @@ def _decide(prompt: str) -> dict:
     available = prompt.split("Available tools", 1)[-1].split("Unavailable tools", 1)[0]
     final = {"action": "final_answer", "tool": "none", "arguments": {}, "purpose": "Enough information gathered"}
     if done:
-        if "document_retrieval" in available and "web_search" in available and "compare" in q and "web_search(" not in prompt:
-            return {"action": "call_tool", "tool": "web_search", "arguments": {"query": question},
-                    "purpose": "Find recent public guidance"}
+        if (
+            "document_retrieval" in available
+            and "web_search" in available
+            and "compare" in q
+            and "web_search(" not in prompt
+        ):
+            return {
+                "action": "call_tool",
+                "tool": "web_search",
+                "arguments": {"query": question},
+                "purpose": "Find recent public guidance",
+            }
         return final
     math = re.search(r"(\d[\d\s+\-*/().]*[+\-*/][\d\s+\-*/().]*\d)", question)
     if math and "calculator" in available:
-        return {"action": "call_tool", "tool": "calculator", "arguments": {"expression": math.group(1).strip()},
-                "purpose": "Compute the arithmetic exactly"}
+        return {
+            "action": "call_tool",
+            "tool": "calculator",
+            "arguments": {"expression": math.group(1).strip()},
+            "purpose": "Compute the arithmetic exactly",
+        }
     if any(w in q for w in ("sales", "selling", "revenue", "orders", "customers", "product")):
         tool = "sql_query"
         args = {"question": question}
@@ -63,8 +76,10 @@ def _sql(prompt: str) -> dict:
     elif "delete" in q or "drop" in q:
         sql = "DELETE FROM orders"
     else:
-        sql = ("SELECT p.name, SUM(m.units_sold) AS units FROM monthly_sales m JOIN products p ON p.id = m.product_id "
-               "GROUP BY p.name ORDER BY units DESC LIMIT 5")
+        sql = (
+            "SELECT p.name, SUM(m.units_sold) AS units FROM monthly_sales m JOIN products p ON p.id = m.product_id "
+            "GROUP BY p.name ORDER BY units DESC LIMIT 5"
+        )
     return {"sql": sql, "explanation": "Rule-based query from the fake model"}
 
 
@@ -80,8 +95,10 @@ def _answer(messages: list[dict]) -> str:
         first = re.search(r'<evidence id="1"[^>]*>\n(.*?)\n</evidence>', user, re.S)
         snippet = " ".join((first.group(1) if first else "").split())[:220]
         cites = "".join(f"[{i}]" for i in ids[:2])
-        return (f"**Fake model answer** based on the retrieved evidence {cites}.\n\n"
-                f"> {snippet}\n\nInference: this text was produced by the development stub, not a real LLM.")
+        return (
+            f"**Fake model answer** based on the retrieved evidence {cites}.\n\n"
+            f"> {snippet}\n\nInference: this text was produced by the development stub, not a real LLM."
+        )
     if "Evidence: none" in user or "Tool notes" in user:
         return "**Fake model answer.** " + user.split("Tool notes:")[-1].split("Tools disabled")[0].strip()
     return f"**Fake model answer** to: {user[:200]}\n\n```python\nprint('hello from the fake model')\n```"
@@ -97,21 +114,39 @@ async def search(q: str = "", format: str = "html") -> dict:  # noqa: A002
     if format != "json":
         return JSONResponse({"error": "json format required"}, status_code=403)
     results = [
-        {"title": "What's New In Python (Python docs)", "url": "https://docs.python.org/3/whatsnew/index.html",
-         "content": f"[stub snippet] Release notes for recent Python versions. Query: {q[:80]}",
-         "engines": ["stub"]},
-        {"title": "Python Insider: release announcements", "url": "https://pythoninsider.blogspot.com/",
-         "content": "[stub snippet] Announcements of new Python releases and security fixes.", "engines": ["stub"]},
-        {"title": "PEP 0 - Index of Python Enhancement Proposals", "url": "https://peps.python.org/",
-         "content": "[stub snippet] The index of all Python Enhancement Proposals.", "engines": ["stub"]},
+        {
+            "title": "What's New In Python (Python docs)",
+            "url": "https://docs.python.org/3/whatsnew/index.html",
+            "content": f"[stub snippet] Release notes for recent Python versions. Query: {q[:80]}",
+            "engines": ["stub"],
+        },
+        {
+            "title": "Python Insider: release announcements",
+            "url": "https://pythoninsider.blogspot.com/",
+            "content": "[stub snippet] Announcements of new Python releases and security fixes.",
+            "engines": ["stub"],
+        },
+        {
+            "title": "PEP 0 - Index of Python Enhancement Proposals",
+            "url": "https://peps.python.org/",
+            "content": "[stub snippet] The index of all Python Enhancement Proposals.",
+            "engines": ["stub"],
+        },
     ]
     return {"query": q, "results": results}
 
 
 @app.get("/api/tags")
 async def tags() -> dict:
-    return {"models": [{"name": MODEL, "size": 1_000_000, "details": {"family": "stub", "parameter_size": "0B",
-                                                                       "quantization_level": "none"}}]}
+    return {
+        "models": [
+            {
+                "name": MODEL,
+                "size": 1_000_000,
+                "details": {"family": "stub", "parameter_size": "0B", "quantization_level": "none"},
+            }
+        ]
+    }
 
 
 @app.post("/api/chat")
@@ -121,15 +156,30 @@ async def chat(request: Request):  # noqa: ANN201
         return JSONResponse({"error": f"model '{body.get('model')}' not found, try pulling it first"}, status_code=404)
     text = _answer(body["messages"])
     if not body.get("stream", True):
-        return {"model": MODEL, "message": {"role": "assistant", "content": text}, "done": True,
-                "prompt_eval_count": 100, "eval_count": len(text) // 4}
+        return {
+            "model": MODEL,
+            "message": {"role": "assistant", "content": text},
+            "done": True,
+            "prompt_eval_count": 100,
+            "eval_count": len(text) // 4,
+        }
 
     def gen():  # noqa: ANN202
         for i in range(0, len(text), 8):
             yield json.dumps({"model": MODEL, "message": {"content": text[i : i + 8]}, "done": False}) + "\n"
             time.sleep(0.01)
-        yield json.dumps({"model": MODEL, "message": {"content": ""}, "done": True, "prompt_eval_count": 100,
-                          "eval_count": len(text) // 4}) + "\n"
+        yield (
+            json.dumps(
+                {
+                    "model": MODEL,
+                    "message": {"content": ""},
+                    "done": True,
+                    "prompt_eval_count": 100,
+                    "eval_count": len(text) // 4,
+                }
+            )
+            + "\n"
+        )
 
     return StreamingResponse(gen(), media_type="application/x-ndjson")
 

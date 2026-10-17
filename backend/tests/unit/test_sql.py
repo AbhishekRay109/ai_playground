@@ -36,7 +36,7 @@ def test_valid_read_only_queries(sql):
         ("SELECT 1; DROP TABLE orders", "one SQL statement"),
         ("SELECT * FROM orders; SELECT * FROM products", "one SQL statement"),
         ("PRAGMA table_info(orders)", "read-only"),
-        ("ATTACH DATABASE '/tmp/x.db' AS x", "read-only"),
+        ("ATTACH DATABASE '/tmp/x.db' AS x", "read-only|parsed"),  # older sqlglot cannot parse ATTACH
         ("SELECT * FROM sqlite_master", "not an approved table"),
         ("SELECT * FROM users", "not an approved table"),
         ("SELECT * FROM main.orders", "Schema-qualified"),
@@ -136,3 +136,25 @@ def test_sql_mode_repairs_after_rejection(client, llm):
     step = next(s for s in data["steps"] if s["name"] == "sql_query")
     assert [a["status"] for a in step["details"]["attempts"]] == ["rejected", "success"]
     assert step["details"]["rows"] == [[120]]
+
+
+def test_readonly_uri_handles_spaces_and_special_characters(tmp_path):
+    # Windows user folders often contain spaces; '#' and '%' would break a hand-built URI.
+    import sqlite3
+
+    from app.services.demo_db import create_demo_db
+    from app.services.sql_safety import readonly_uri
+
+    db_path = tmp_path / "My Projects #1 100%" / "demo.db"
+    db_path.parent.mkdir()
+    create_demo_db(db_path, n_customers=5, n_orders=10)
+
+    uri = readonly_uri(db_path)
+    assert uri.startswith("file:///") and uri.endswith("?mode=ro")
+    conn = sqlite3.connect(uri, uri=True)
+    try:
+        assert conn.execute("SELECT COUNT(*) FROM customers").fetchone()[0] == 5
+        with pytest.raises(sqlite3.OperationalError, match="readonly"):
+            conn.execute("DELETE FROM customers")
+    finally:
+        conn.close()

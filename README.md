@@ -10,7 +10,9 @@ Everything runs on your machine. Inference uses Ollama, embeddings use sentence-
 
 ### Quick start (no Docker)
 
-Four terminals, macOS or Linux (Windows: see [section 5](#5-local-installation)):
+Use **Python 3.11–3.13** (3.12 recommended) and Node.js 20+. Run each numbered step in its own terminal.
+
+**macOS / Linux**
 
 ```bash
 # 0. once: install Ollama from https://ollama.com/download, then
@@ -25,6 +27,28 @@ scripts/setup-searxng.sh            # optional, only needed for Web Search
 # 2. scripts/run-searxng.sh
 # 3. cd backend && .venv/bin/uvicorn app.main:app --port 8000
 # 4. cd frontend && npm run dev     then open http://localhost:5173
+```
+
+**Windows (PowerShell)**
+
+```powershell
+# 0. once: install Python 3.12 from python.org (tick "Add python.exe to PATH"),
+#    Node.js LTS from nodejs.org and Ollama from https://ollama.com/download, then
+ollama pull qwen2.5:7b
+copy .env.example .env
+cd backend
+py -3.12 -m venv .venv
+.venv\Scripts\python -m pip install --upgrade pip
+.venv\Scripts\python -m pip install -r requirements-dev.txt
+.venv\Scripts\python -m app.cli init
+.venv\Scripts\python -m app.cli download-embedding-model
+cd ..\frontend
+npm install
+
+# 1. Ollama runs in the background after installation (system tray icon).
+# 2. Web Search only: SearXNG needs WSL2 (see section 9). Skip it and the other four modes still work.
+# 3. cd backend;  .venv\Scripts\uvicorn app.main:app --port 8000
+# 4. cd frontend; npm run dev        then open http://localhost:5173
 ```
 
 Docker Compose is supported too ([section 13](#13-docker-compose-usage)) but is optional.
@@ -249,16 +273,18 @@ Ollama serves many models, and **their licenses differ**. The model's page on ol
 
 ## 5. Local installation
 
-Everything installs natively. No Docker is needed.
+Everything installs natively. No Docker is needed. You need **Python 3.11, 3.12 or 3.13** (3.12 is the safest choice on Windows, where every dependency ships prebuilt wheels).
+
+### macOS / Linux
 
 ```bash
 git clone https://github.com/AbhishekRay109/ai_playground.git && cd ai_playground
-cp .env.example .env          # Windows: copy .env.example .env
+cp .env.example .env
 
 # Backend (Python virtual environment)
 cd backend
 python3 -m venv .venv
-source .venv/bin/activate                               # Windows: .venv\Scripts\activate
+source .venv/bin/activate
 pip install --index-url https://download.pytorch.org/whl/cpu torch   # optional: CPU-only torch, much smaller
 pip install -r requirements-dev.txt                     # or requirements.txt without the test tools
 python -m app.cli init                                  # creates data/app.db, data/demo.db, data/qdrant
@@ -272,9 +298,41 @@ cd frontend && npm install && cd ..
 scripts/setup-searxng.sh
 ```
 
+### Windows (PowerShell)
+
+1. Install **Python 3.12** from <https://www.python.org/downloads/windows/> and tick **"Add python.exe to PATH"**. Avoid the Microsoft Store version and old Anaconda environments: they cause the SSL and "could not find a version" errors in [Troubleshooting](#17-troubleshooting).
+2. Install **Node.js LTS** from <https://nodejs.org> and **Git** from <https://git-scm.com/download/win>.
+3. Then:
+
+```powershell
+git clone https://github.com/AbhishekRay109/ai_playground.git
+cd ai_playground
+copy .env.example .env
+
+# Backend
+cd backend
+py -3.12 -m venv .venv
+.venv\Scripts\Activate.ps1          # if blocked: Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+python -m pip install --upgrade pip
+pip install --index-url https://download.pytorch.org/whl/cpu torch   # optional: CPU-only torch, much smaller
+pip install -r requirements-dev.txt
+python -m app.cli init
+python -m app.cli download-embedding-model
+cd ..
+
+# Frontend
+cd frontend
+npm install
+cd ..
+```
+
+In Command Prompt (cmd.exe) instead of PowerShell, activate with `.venv\Scripts\activate.bat`. SearXNG (Web Search only) does not run natively on Windows; see [section 9](#9-searxng-configuration) for the WSL2 route.
+
+### Notes
+
 On a Mac with Apple Silicon or a machine with an NVIDIA GPU, skip the CPU-only torch line so pip installs the accelerated build.
 
-Python dependencies are listed in `backend/requirements.txt` (runtime, pinned to the tested versions) and `backend/requirements-dev.txt` (adds pytest and ruff). `pyproject.toml` declares the same packages, so `pip install -e ".[embeddings,dev]"` also works. If you comment out `sentence-transformers` in `requirements.txt`, PyTorch is not installed. In that case set `EMBEDDING_PROVIDER=hash` to use the deterministic lexical embedder (offline and lower quality, mostly useful for tests and UI work).
+Python dependencies are listed in `backend/requirements.txt` (runtime, as version ranges so pip picks builds that exist for your Python and OS) and `backend/requirements-dev.txt` (adds pytest and ruff). `pyproject.toml` declares the same packages, so `pip install -e ".[embeddings,dev]"` also works. If you comment out `sentence-transformers` in `requirements.txt`, PyTorch is not installed. In that case set `EMBEDDING_PROVIDER=hash` to use the deterministic lexical embedder (offline and lower quality, mostly useful for tests and UI work).
 
 ## 6. Ollama installation and model setup
 
@@ -323,7 +381,21 @@ scripts/run-searxng.sh       # serves it on 127.0.0.1:8080 with searxng/settings
 curl "http://127.0.0.1:8080/search?q=python&format=json" | head -c 300
 ```
 
-`run-searxng.sh` uses `SEARXNG_SECRET` from your environment or `.env`, and generates a random one if it is still the placeholder. `searxng/settings.yml` enables the **JSON output format**, which the backend needs (`/search?format=json`) and which SearXNG turns off by default. It also disables the rate limiter for local use. SearXNG does not support native Windows; use WSL2 there, or leave it off and use the other modes.
+`run-searxng.sh` uses `SEARXNG_SECRET` from your environment or `.env`, and generates a random one if it is still the placeholder. `searxng/settings.yml` enables the **JSON output format**, which the backend needs (`/search?format=json`) and which SearXNG turns off by default. It also disables the rate limiter for local use. SearXNG does not support native Windows. Either leave it off (the other four modes work without it) or run it in **WSL2**:
+
+```powershell
+wsl --install -d Ubuntu          # once, then restart and open the "Ubuntu" app
+```
+
+```bash
+# inside Ubuntu (WSL2); C:\path\to\ai_playground is /mnt/c/path/to/ai_playground
+sudo apt update && sudo apt install -y python3-venv python3-dev git build-essential
+cd /mnt/c/path/to/ai_playground
+bash scripts/setup-searxng.sh
+bash scripts/run-searxng.sh      # reachable from Windows at http://localhost:8080
+```
+
+The backend keeps running on Windows with the default `SEARXNG_URL=http://localhost:8080`, because WSL2 forwards `localhost` to Windows.
 
 Point the backend at another instance with `SEARXNG_URL`. Public instances usually disable JSON or rate-limit heavily, so a local instance is recommended. If SearXNG is down, Web Search mode and the agent's web tool return a clear 503 error and a hint. There is **no fallback provider**.
 
@@ -366,7 +438,7 @@ All are optional and the defaults are shown. See [`.env.example`](.env.example),
 ## 11. Running the backend
 
 ```bash
-cd backend && source .venv/bin/activate
+cd backend && source .venv/bin/activate      # Windows: cd backend; .venv\Scripts\Activate.ps1
 uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
@@ -380,6 +452,14 @@ uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 python scripts/dev_stubs.py --port 11435 &
 OLLAMA_BASE_URL=http://localhost:11435 OLLAMA_MODEL=fake-llm SEARXNG_URL=http://localhost:11435 \
   EMBEDDING_PROVIDER=hash uvicorn app.main:app --port 8000
+```
+
+On Windows PowerShell, run the stub in its own terminal (`python scripts/dev_stubs.py --port 11435`), then in another:
+
+```powershell
+$env:OLLAMA_BASE_URL="http://localhost:11435"; $env:OLLAMA_MODEL="fake-llm"
+$env:SEARXNG_URL="http://localhost:11435"; $env:EMBEDDING_PROVIDER="hash"
+uvicorn app.main:app --port 8000
 ```
 
 ## 12. Running the frontend
@@ -531,6 +611,9 @@ To recapture with a real model, run the stack, upload the fixtures, ask the exam
 
 | Symptom | Fix |
 | --- | --- |
+| pip: `Could not find a version that satisfies the requirement …` | Usually your Python is too old or pip cannot reach PyPI. Check `python --version` (needs 3.11–3.13) and run `python -m pip install --upgrade pip`. If the message ends with `(from versions: none)`, pip could not download anything at all: see the SSL row below. |
+| pip: `the ssl module in Python is not available` | That Python was built without SSL. On Windows, install Python from python.org (or run inside the "Anaconda Prompt" if you use Anaconda). On macOS/Linux, reinstall Python with OpenSSL (`brew install openssl@3` then reinstall via pyenv, or `sudo apt install libssl-dev` before building). Then delete `backend/.venv` and recreate it. |
+| PowerShell: `Activate.ps1 cannot be loaded because running scripts is disabled` | Run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once, or call `.venv\Scripts\python` directly. |
 | "Ollama is not reachable" | Start it (open the Ollama app, or run `ollama serve`) and check `OLLAMA_BASE_URL` (default `http://localhost:11434`). |
 | "Model 'x' is not installed" | Run `ollama pull x`, or pick an installed model in Settings. |
 | Answers time out | Raise `LLM_TIMEOUT_S` / `AGENT_REQUEST_TIMEOUT_S`, use a smaller model, or enable a GPU. The first request also loads the model into memory. |
@@ -553,6 +636,7 @@ To recapture with a real model, run the stack, upload the fixtures, ask the exam
   - SearXNG search results from the internet. `scripts/setup-searxng.sh` and `run-searxng.sh` were run natively and the backend reported SearXNG healthy and handled its (empty) JSON responses, but the build environment had no outbound access for SearXNG's engines.
   - the full-size backend image with torch
   - a complete `docker compose up`
+  - a Windows machine. The Windows steps follow each tool's documented Windows install, and the backend avoids POSIX-only paths and relies on UTF-8 file I/O, but nothing here was run on Windows itself.
 
   The integration suite (`RUN_INTEGRATION=1`) exists for exactly that. Answer quality depends on the model you choose.
 - Single user, single process. There is no authentication or per-user data separation.

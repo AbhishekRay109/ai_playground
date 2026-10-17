@@ -41,7 +41,7 @@ class DatasetRunRequest(BaseModel):
 def list_datasets() -> list[dict[str, Any]]:
     out = []
     for path in sorted(DATASETS_DIR.glob("*.json")):
-        data = json.loads(path.read_text())
+        data = json.loads(path.read_text(encoding="utf-8"))
         out.append(
             {
                 "name": data["name"],
@@ -58,7 +58,7 @@ def load_dataset(name: str) -> dict[str, Any]:
     path = DATASETS_DIR / f"{name}.json"
     if not path.is_file():
         raise NotFound(f"Dataset '{name}' not found.")
-    return json.loads(path.read_text())
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 async def compare(container: Container, req: CompareRequest) -> list[CompareResult]:

@@ -1,24 +1,25 @@
 # Backend runtime dependencies. Install with:  pip install -r requirements.txt
-# Pinned to the versions the test suite was run with. pyproject.toml declares the same
-# packages with minimum versions, for `pip install -e .`.
-fastapi==0.143.3
-uvicorn[standard]==0.54.0
-pydantic==2.14.1
-pydantic-settings==2.16.0
-sqlalchemy==2.1.5
-httpx==0.28.1
-httpcore==1.0.9
-qdrant-client==1.19.1
-pymupdf==1.28.2
-python-docx==1.2.0
-beautifulsoup4==4.15.0
-langgraph==1.2.16
-sqlglot==30.23.0
-python-multipart==0.0.32
-numpy==2.5.4
+# Requires Python 3.11 or newer (3.12 recommended on Windows).
+# Version ranges, not exact pins, so pip picks builds that exist for your Python
+# version and operating system. pyproject.toml declares the same lower bounds.
+fastapi>=0.120,<1
+uvicorn[standard]>=0.30,<1
+pydantic>=2.7,<3
+pydantic-settings>=2.7,<3
+sqlalchemy>=2.0,<3
+httpx>=0.27,<1
+httpcore>=1.0,<2
+qdrant-client>=1.12,<2
+pymupdf>=1.24,<2
+python-docx>=1.1,<2
+beautifulsoup4>=4.12,<5
+langgraph>=0.2.60,<2
+sqlglot>=25.0,<31
+python-multipart>=0.0.9,<1
+numpy>=1.26,<3
 
 # Local embedding and reranking models (pulls in PyTorch, about 1 GB).
 # For a smaller CPU-only build, first run:
 #   pip install --index-url https://download.pytorch.org/whl/cpu torch
 # To skip it entirely, comment this line out and set EMBEDDING_PROVIDER=hash in .env.
-sentence-transformers>=3.0
+sentence-transformers>=3.0,<7

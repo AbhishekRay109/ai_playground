@@ -183,6 +183,15 @@ def _json_safe(value: Any) -> Any:
     return value
 
 
+def readonly_uri(db_path: Path) -> str:
+    """SQLite URI that opens ``db_path`` read-only.
+
+    ``Path.as_uri`` percent-encodes the path and adds the leading slash Windows
+    drive letters need (``file:///C:/...``), so this works on every platform.
+    """
+    return f"{db_path.resolve().as_uri()}?mode=ro"
+
+
 class ReadOnlyExecutor:
     def __init__(self, db_path: Path, allowed_tables: list[str], row_limit: int, timeout_s: float) -> None:
         self.db_path = db_path
@@ -210,9 +219,7 @@ class ReadOnlyExecutor:
             raise SQLExecutionError("The demo database does not exist yet.")
         start = time.perf_counter()
         deadline = start + self.timeout_s
-        conn = sqlite3.connect(
-            f"file:{self.db_path.as_posix()}?mode=ro", uri=True, timeout=self.timeout_s, check_same_thread=False
-        )
+        conn = sqlite3.connect(readonly_uri(self.db_path), uri=True, timeout=self.timeout_s, check_same_thread=False)
         try:
             conn.execute("PRAGMA query_only = ON")
             conn.set_authorizer(self._authorizer)
