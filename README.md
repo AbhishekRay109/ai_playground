@@ -16,7 +16,7 @@ Four terminals, macOS or Linux (Windows: see [section 5](#5-local-installation))
 # 0. once: install Ollama from https://ollama.com/download, then
 ollama pull qwen2.5:7b
 cp .env.example .env
-(cd backend && python3 -m venv .venv && .venv/bin/pip install -e ".[embeddings,dev]" \
+(cd backend && python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt \
    && .venv/bin/python -m app.cli init && .venv/bin/python -m app.cli download-embedding-model)
 (cd frontend && npm install)
 scripts/setup-searxng.sh            # optional, only needed for Web Search
@@ -260,7 +260,7 @@ cd backend
 python3 -m venv .venv
 source .venv/bin/activate                               # Windows: .venv\Scripts\activate
 pip install --index-url https://download.pytorch.org/whl/cpu torch   # optional: CPU-only torch, much smaller
-pip install -e ".[embeddings,dev]"
+pip install -r requirements-dev.txt                     # or requirements.txt without the test tools
 python -m app.cli init                                  # creates data/app.db, data/demo.db, data/qdrant
 python -m app.cli download-embedding-model              # one-time ~90 MB download (section 7)
 cd ..
@@ -274,7 +274,7 @@ scripts/setup-searxng.sh
 
 On a Mac with Apple Silicon or a machine with an NVIDIA GPU, skip the CPU-only torch line so pip installs the accelerated build.
 
-If you leave out the `embeddings` extra, sentence-transformers is not installed. In that case set `EMBEDDING_PROVIDER=hash` to use the deterministic lexical embedder (offline and lower quality, mostly useful for tests and UI work).
+Python dependencies are listed in `backend/requirements.txt` (runtime, pinned to the tested versions) and `backend/requirements-dev.txt` (adds pytest and ruff). `pyproject.toml` declares the same packages, so `pip install -e ".[embeddings,dev]"` also works. If you comment out `sentence-transformers` in `requirements.txt`, PyTorch is not installed. In that case set `EMBEDDING_PROVIDER=hash` to use the deterministic lexical embedder (offline and lower quality, mostly useful for tests and UI work).
 
 ## 6. Ollama installation and model setup
 
