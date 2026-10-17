@@ -16,7 +16,7 @@ from app.core.errors import AppError, SQLExecutionError, SQLValidationError
 from app.services.demo_db import TABLE_DESCRIPTIONS
 from app.services.llm_service import ChatMessage, LLMClient, LLMOptions, LLMResult
 from app.services.prompts import SQL_GENERATION_SYSTEM
-from app.services.sql_safety import QueryResult, ReadOnlyExecutor, ValidatedQuery, validate_sql
+from app.services.sql_safety import QueryResult, ReadOnlyExecutor, ValidatedQuery, readonly_uri, validate_sql
 
 SQL_SCHEMA_FORMAT = {
     "type": "object",
@@ -74,7 +74,7 @@ class SqlService:
         """Describe only the allowlisted tables (columns, types, keys, two sample rows)."""
         if self._schema_cache:
             return self._schema_cache
-        conn = sqlite3.connect(f"file:{self.db_path.as_posix()}?mode=ro", uri=True)
+        conn = sqlite3.connect(readonly_uri(self.db_path), uri=True)
         try:
             parts = []
             for table in self.settings.sql_allowed_tables:

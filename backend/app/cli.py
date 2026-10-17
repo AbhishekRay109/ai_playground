@@ -58,12 +58,12 @@ def run_eval(dataset: str, out: str | None, json_out: str | None) -> int:
         c.close()
     md = report_markdown(report)
     if out:
-        Path(out).write_text(md)
+        Path(out).write_text(md, encoding="utf-8")
         print(f"Wrote {out}")
     else:
         print(md)
     if json_out:
-        Path(json_out).write_text(json.dumps(report, indent=2, default=str))
+        Path(json_out).write_text(json.dumps(report, indent=2, default=str), encoding="utf-8")
     return 0
 
 
