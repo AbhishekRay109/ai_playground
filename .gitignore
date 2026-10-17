@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+backend/data/
+*.egg-info/
+
+# Node
+node_modules/
+frontend/dist/
+
+# Local configuration and data
+.env
+data/
+*.db
+
+# Locally installed services (scripts/setup-searxng.sh)
+.local/
+*.tsbuildinfo

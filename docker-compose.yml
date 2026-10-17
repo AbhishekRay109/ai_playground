@@ -1,0 +1,75 @@
+# Local, single-user stack. Not hardened for multi-tenant or internet-facing use.
+#   cp .env.example .env    # then edit SEARXNG_SECRET
+#   docker compose up -d --build
+#   docker compose exec ollama ollama pull qwen2.5:7b
+#   docker compose exec backend python -m app.cli download-embedding-model
+name: ai-playground
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ollama:/root/.ollama
+    ports:
+      - "127.0.0.1:11434:11434"
+    restart: unless-stopped
+    # NVIDIA GPU (optional): uncomment and install the NVIDIA Container Toolkit.
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices: [{ driver: nvidia, count: all, capabilities: [gpu] }]
+
+  searxng:
+    image: searxng/searxng:latest
+    environment:
+      SEARXNG_SECRET: ${SEARXNG_SECRET:?set SEARXNG_SECRET in .env}
+      SEARXNG_BASE_URL: http://localhost:8080/
+    volumes:
+      - ./searxng/settings.yml:/etc/searxng/settings.yml:ro
+    ports:
+      - "127.0.0.1:8080:8080"
+    restart: unless-stopped
+
+  backend:
+    build: ./backend
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      OLLAMA_BASE_URL: http://ollama:11434
+      SEARXNG_URL: http://searxng:8080
+      DATA_DIR: /data
+      CORS_ORIGINS: http://localhost:5173
+    volumes:
+      - app-data:/data
+      - hf-models:/models
+    depends_on:
+      - ollama
+      - searxng
+    ports:
+      - "127.0.0.1:8000:8000"
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    depends_on:
+      - backend
+    ports:
+      - "127.0.0.1:5173:80"
+    restart: unless-stopped
+
+  # Optional: a Qdrant server instead of embedded local mode.
+  #   docker compose --profile qdrant-server up -d   and set QDRANT_URL=http://qdrant:6333
+  qdrant:
+    image: qdrant/qdrant:latest
+    profiles: ["qdrant-server"]
+    volumes:
+      - qdrant:/qdrant/storage
+    ports:
+      - "127.0.0.1:6333:6333"
+
+volumes:
+  ollama:
+  app-data:
+  hf-models:
+  qdrant:

@@ -1,0 +1,104 @@
+{
+  "name": "default",
+  "description": "Small benchmark for document RAG and agent tool selection over the bundled Acme fixture documents and the sample sales database.",
+  "documents": ["acme_travel_policy.md", "acme_security_handbook.md", "product_faq.txt"],
+  "items": [
+    {
+      "id": "rag-booking",
+      "mode": "document_rag",
+      "question": "How far in advance must international travel be booked?",
+      "evidence_contains": ["International travel must be booked at least 21 days in advance"],
+      "expected_keywords": ["21 days"]
+    },
+    {
+      "id": "rag-exclusions",
+      "mode": "document_rag",
+      "question": "Which travel expenses are excluded from reimbursement?",
+      "evidence_contains": ["Traffic fines, parking tickets"],
+      "expected_keywords": ["traffic fines", "family members", "entertainment"]
+    },
+    {
+      "id": "rag-hotel",
+      "mode": "document_rag",
+      "question": "What is the nightly hotel limit in high-cost cities?",
+      "evidence_contains": ["260 USD in high-cost cities"],
+      "expected_keywords": ["260"]
+    },
+    {
+      "id": "rag-mfa",
+      "mode": "document_rag",
+      "question": "Where is multi-factor authentication mandatory?",
+      "evidence_contains": ["Multi-factor authentication (MFA) is mandatory"],
+      "expected_keywords": ["email", "VPN"]
+    },
+    {
+      "id": "rag-incident",
+      "mode": "document_rag",
+      "question": "How quickly must a lost laptop be reported to security?",
+      "evidence_contains": ["within 1 hour of discovery"],
+      "expected_keywords": ["1 hour"]
+    },
+    {
+      "id": "rag-returns",
+      "mode": "document_rag",
+      "question": "What is the restocking fee for opened products?",
+      "evidence_contains": ["10 percent restocking fee"],
+      "expected_keywords": ["10 percent"]
+    },
+    {
+      "id": "rag-unanswerable",
+      "mode": "document_rag",
+      "question": "What is the company's parental leave policy?",
+      "evidence_contains": [],
+      "expected_keywords": ["could not find", "not"],
+      "expect_insufficient": true
+    },
+    {
+      "id": "agent-calculator",
+      "mode": "agent",
+      "enabled_tools": ["document_retrieval", "web_search", "sql_query", "calculator"],
+      "question": "What is 129 * 347?",
+      "expected_tools": ["calculator"],
+      "forbidden_tools": ["web_search", "document_retrieval", "sql_query"],
+      "expected_keywords": ["44763"]
+    },
+    {
+      "id": "agent-sql",
+      "mode": "agent",
+      "enabled_tools": ["document_retrieval", "sql_query", "calculator"],
+      "question": "Which product sold the most units overall according to our sales data?",
+      "expected_tools": ["sql_query"],
+      "forbidden_tools": ["web_search"],
+      "expected_keywords": ["Echo Wireless Earbuds"]
+    },
+    {
+      "id": "agent-docs",
+      "mode": "agent",
+      "enabled_tools": ["document_retrieval", "web_search", "sql_query", "calculator"],
+      "question": "What does my uploaded travel policy say about exclusions?",
+      "expected_tools": ["document_retrieval"],
+      "forbidden_tools": ["sql_query"],
+      "evidence_contains": ["Traffic fines, parking tickets"],
+      "expected_keywords": ["traffic fines"]
+    },
+    {
+      "id": "agent-disabled-tool",
+      "mode": "agent",
+      "enabled_tools": ["calculator"],
+      "question": "What does my uploaded security handbook say about password length?",
+      "expected_tools": [],
+      "forbidden_tools": ["document_retrieval", "web_search", "sql_query"],
+      "expected_keywords": ["disabled"]
+    },
+    {
+      "id": "agent-docs-and-math",
+      "mode": "agent",
+      "enabled_tools": ["document_retrieval", "calculator"],
+      "question": "Using the travel policy, what is the total international meal per diem for a 9-day trip?",
+      "expected_tools": ["document_retrieval"],
+      "forbidden_tools": ["web_search", "sql_query"],
+      "evidence_contains": ["85 USD per day for international travel"],
+      "expected_keywords": ["765"]
+    }
+  ]
+}
