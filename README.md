@@ -10,7 +10,7 @@ Everything runs on your machine. Inference uses Ollama, embeddings use sentence-
 
 ### Quick start (no Docker)
 
-Use **Python 3.11–3.13** (3.12 recommended) and Node.js 20+. Run each numbered step in its own terminal.
+Use **Python 3.11–3.13** (3.12 recommended) and Node.js 20+. Complete the one-time setup first, then run each service in its own terminal.
 
 **macOS / Linux**
 
@@ -24,7 +24,7 @@ cp .env.example .env
 scripts/setup-searxng.sh            # optional, only needed for Web Search
 
 # 1. ollama serve                   (skip if the Ollama app is already running)
-# 2. scripts/run-searxng.sh
+# 2. scripts/run-searxng.sh         (optional; needed only for Web Search)
 # 3. cd backend && .venv/bin/uvicorn app.main:app --port 8000
 # 4. cd frontend && npm run dev     then open http://localhost:5173
 ```
@@ -32,24 +32,57 @@ scripts/setup-searxng.sh            # optional, only needed for Web Search
 **Windows (PowerShell)**
 
 ```powershell
-# 0. once: install Python 3.12 from python.org (tick "Add python.exe to PATH"),
-#    Node.js LTS from nodejs.org and Ollama from https://ollama.com/download, then
+# One-time setup, run from the repository root in PowerShell.
+# Install Python 3.12 (enable "Add python.exe to PATH"), Node.js 20+ and Ollama first.
 ollama pull qwen2.5:7b
-copy .env.example .env
-cd backend
-py -3.12 -m venv .venv
-.venv\Scripts\python -m pip install --upgrade pip
-.venv\Scripts\python -m pip install -r requirements-dev.txt
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+py -3.12 -m venv backend\.venv
+backend\.venv\Scripts\python -m pip install --upgrade pip
+backend\.venv\Scripts\python -m pip install -r backend\requirements-dev.txt
+Push-Location backend
 .venv\Scripts\python -m app.cli init
 .venv\Scripts\python -m app.cli download-embedding-model
-cd ..\frontend
+Pop-Location
+Push-Location frontend
 npm install
+Pop-Location
 
-# 1. Ollama runs in the background after installation (system tray icon).
-# 2. Web Search only: SearXNG needs WSL2 (see section 9). Skip it and the other four modes still work.
-# 3. cd backend;  .venv\Scripts\uvicorn app.main:app --port 8000
-# 4. cd frontend; npm run dev        then open http://localhost:5173
 ```
+
+Start each service in its own PowerShell terminal, from the repository root. Ollama usually starts with Windows, so skip Terminal 1 if it is already running.
+
+**Terminal 1 (Ollama, only if needed)**
+
+```powershell
+ollama serve
+```
+
+**Terminal 2 (backend)**
+
+```powershell
+Push-Location backend
+.venv\Scripts\uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+**Terminal 3 (frontend)**
+
+```powershell
+Push-Location frontend
+npm run dev -- --host 127.0.0.1
+```
+
+Open <http://127.0.0.1:5173>.
+
+On Windows, Web Search additionally requires SearXNG running in WSL2 (section 9) or another reachable SearXNG instance. Direct LLM, Document RAG and SQL work without it; Agent Mode works too, but cannot use its web-search tool while SearXNG is unavailable. The default chat model is several gigabytes, and CPU-only generation can be slow.
+
+**Verify the setup and try a first RAG question**
+
+1. Open <http://127.0.0.1:8000/api/v1/health>. Ollama, embeddings, vector store and sample database should report `ok`. `web_search` may report `false` if SearXNG is not set up.
+2. In the app, open **Documents** and upload `backend/app/evaluation/fixtures/product_faq.txt`.
+3. Return to **Chat**, select **Document RAG**, and ask: “How many adjustable noise cancellation levels do Echo Wireless Earbuds have?” The answer should be grounded in the uploaded FAQ.
+4. Select **Direct LLM** to try a general question without document retrieval. Select **Web Search** only after SearXNG is healthy.
+
+Web Search uses SearXNG's enabled search engines; this project does not call the Google Search API directly. See [SearXNG configuration](#9-searxng-configuration) before demoing web results.
 
 Docker Compose is supported too ([section 13](#13-docker-compose-usage)) but is optional.
 
